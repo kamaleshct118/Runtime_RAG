@@ -1,0 +1,7 @@
+langchain
+langchain-community
+langchain-huggingface
+pymupdf
+faiss-cpu
+sentence-transformers
+ollama
