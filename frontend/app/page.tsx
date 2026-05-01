@@ -255,9 +255,9 @@ export default function RagChatApp() {
       return;
     }
     
-    // 10MB limit (10 * 1024 * 1024 bytes)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File is too large. Please upload a PDF smaller than 10MB.");
+    // 15MB limit (15 * 1024 * 1024 bytes)
+    if (file.size > 15 * 1024 * 1024) {
+      setError("File is too large. Please upload a PDF smaller than 15MB.");
       return;
     }
 
@@ -459,6 +459,9 @@ export default function RagChatApp() {
                   </>
                 )}
               </label>
+              <p className="text-[10px] text-muted-foreground/60 text-center mt-2 font-medium">
+                Max file size: 15MB
+              </p>
             </div>
 
             {/* Document list */}

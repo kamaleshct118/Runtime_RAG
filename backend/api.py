@@ -59,11 +59,21 @@ def health_check():
     """Check if the backend is actively running."""
     return {"status": "healthy", "service": "Runtime RAG API"}
 
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB in bytes
+
 @app.post("/upload", response_model=UploadResponse, tags=["Document Management"])
 async def upload_document(file: UploadFile = File(...)):
     """Uploads a PDF, processes it, creates an index, and returns the new Doc ID."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        
+    # Check file size
+    file.file.seek(0, 2) # Go to the end of the file
+    file_size = file.file.tell() # Get the size
+    file.file.seek(0) # Go back to the beginning so it can be read normally later
+    
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 15MB.")
     
     os.makedirs(config.UPLOAD_DIR, exist_ok=True)
     file_path = os.path.join(config.UPLOAD_DIR, file.filename)
