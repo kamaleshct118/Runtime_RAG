@@ -9,9 +9,9 @@ def create_index(chunks, doc_id):
     Step 5: Save FAISS index to disk
     """
     print(f"[*] Starting embedding process for: {doc_id}")
-    embeddings = HuggingFaceEmbeddings(model_name=config.EMBED_MODEL)
-    
-    # Convert text chunks to vector math
+    import retriever
+    # Grab the globally cached model instead of starting a new one
+    embeddings = retriever.get_embeddings()
     vector_db = FAISS.from_documents(chunks, embeddings)
     
     # Save folder

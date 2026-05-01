@@ -1,7 +1,13 @@
 langchain
 langchain-community
 langchain-huggingface
+langchain-text-splitters
 pymupdf
 faiss-cpu
 sentence-transformers
-ollama
+langchain-openai
+fastapi
+uvicorn
+einops
+python-multipart
+pydantic

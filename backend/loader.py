@@ -17,7 +17,8 @@ def process_pdf(file_path):
     
     os.makedirs(config.UPLOAD_DIR, exist_ok=True)
     dest_path = os.path.join(config.UPLOAD_DIR, base_name)
-    shutil.copy2(file_path, dest_path)
+    if os.path.abspath(file_path) != os.path.abspath(dest_path):
+        shutil.copy2(file_path, dest_path)
     
     print(f"[*] Extracting text from {base_name}...")
     loader = PyMuPDFLoader(dest_path)

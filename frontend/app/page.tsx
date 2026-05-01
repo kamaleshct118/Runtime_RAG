@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import {
   FileText,
   Upload,
@@ -668,7 +669,22 @@ export default function RagChatApp() {
                         </div>
                       ) : (
                         <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-card border border-border text-sm leading-relaxed text-foreground shadow-sm">
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          <div className="text-sm prose-sm max-w-none">
+                            <ReactMarkdown
+                              components={{
+                                h1: ({node, ...props}: any) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
+                                h2: ({node, ...props}: any) => <h2 className="text-lg font-bold mt-4 mb-2 text-foreground" {...props} />,
+                                h3: ({node, ...props}: any) => <h3 className="text-base font-bold mt-3 mb-1 text-foreground" {...props} />,
+                                p: ({node, ...props}: any) => <p className="mb-2 leading-relaxed whitespace-pre-wrap text-foreground/90 last:mb-0" {...props} />,
+                                ul: ({node, ...props}: any) => <ul className="list-disc list-outside ml-5 mb-3 text-foreground/90" {...props} />,
+                                ol: ({node, ...props}: any) => <ol className="list-decimal list-outside ml-5 mb-3 text-foreground/90" {...props} />,
+                                li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
+                                strong: ({node, ...props}: any) => <strong className="font-semibold text-foreground" {...props} />
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
                           {msg.sources && msg.pages && (
                             <SourcesPanel
                               sources={msg.sources}
