@@ -1,29 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import {
-  FileText,
-  Upload,
-  Trash2,
-  Send,
-  ChevronDown,
-  BookOpen,
-  MessageSquare,
-  Sparkles,
   AlertCircle,
-  X,
-  FileSearch,
-  Loader2,
+  BookOpenText,
   CheckCircle2,
+  ChevronDown,
   FilePlus2,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Hash,
+  FileText,
+  Loader2,
+  Menu,
+  Search,
+  Send,
+  Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Source {
   page: number;
@@ -41,92 +35,125 @@ interface ChatMessage {
 
 const BASE_URL = "http://localhost:8000";
 
-// ─── Utility ──────────────────────────────────────────────────────────────────
-
 function genId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
 function formatDocName(doc: string) {
-  return doc.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  return doc
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function getEmptyStatePrompts(activeDocument: string | null) {
+  return activeDocument
+    ? [
+        "Summarize the key points.",
+        "What evidence supports the main claim?",
+        "Which pages should I review first?",
+      ]
+    : [
+        "Upload a PDF under 15MB.",
+        "Select one document from the sidebar.",
+        "Ask precise questions and inspect citations.",
+      ];
+}
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 px-1 py-1">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="typing-dot inline-block w-1.5 h-1.5 rounded-full bg-brand"
-        />
-      ))}
+    <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/60 backdrop-blur-md">
+      <div className="flex items-center gap-1">
+        {[0, 1, 2].map((item) => (
+          <span key={item} className="typing-dot h-1.5 w-1.5 rounded-full bg-[var(--accent-strong)]" />
+        ))}
+      </div>
+      <span>Thinking</span>
     </div>
   );
 }
 
-function SourcesPanel({ sources, pages }: { sources: Source[]; pages: number[] }) {
+function CitationsPanel({ sources, pages }: { sources: Source[]; pages: number[] }) {
   const [open, setOpen] = useState(false);
 
-  if (!sources || sources.length === 0) return null;
+  if (!sources.length) return null;
 
   return (
-    <div className="mt-3 border border-border rounded-xl overflow-hidden">
+    <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
       <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:bg-accent/50 transition-colors"
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
       >
-        <span className="flex items-center gap-1.5 font-medium">
-          <BookOpen size={11} className="text-brand" />
-          {sources.length} source{sources.length > 1 ? "s" : ""} referenced
-        </span>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-[var(--accent-strong)]">
+            <BookOpenText size={14} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Citations</p>
+            <p className="text-xs text-white/45">{sources.length} supporting excerpts</p>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
-          {pages.length > 0 && (
-            <span className="flex items-center gap-1">
-              {pages.map((p) => (
-                <span
-                  key={p}
-                  className="inline-flex items-center gap-0.5 bg-brand-muted text-brand px-1.5 py-0.5 rounded text-[10px] font-mono font-medium"
-                >
-                  <Hash size={8} />
-                  {p}
-                </span>
-              ))}
-            </span>
-          )}
+          <div className="hidden flex-wrap gap-1 sm:flex">
+            {pages.map((page) => (
+              <span
+                key={page}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/55"
+              >
+                p.{page}
+              </span>
+            ))}
+          </div>
           <ChevronDown
-            size={12}
-            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            size={14}
+            className={`text-white/45 transition-transform ${open ? "rotate-180" : ""}`}
           />
         </div>
       </button>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border divide-y divide-border">
-              {sources.map((src, idx) => (
-                <div key={idx} className="px-3 py-2.5 bg-card/40">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-mono font-medium text-brand bg-brand-muted px-1.5 py-0.5 rounded flex items-center gap-1">
-                      <Hash size={8} />
-                      Page {src.page}
+            <div className="space-y-2 border-t border-white/8 px-3 py-3">
+              <div className="flex flex-wrap gap-1 sm:hidden">
+                {pages.map((page) => (
+                  <span
+                    key={page}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/55"
+                  >
+                    p.{page}
+                  </span>
+                ))}
+              </div>
+
+              {sources.map((source, index) => (
+                <motion.div
+                  key={`${source.page}-${index}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                  className="rounded-lg border border-white/8 bg-black/15 px-3 py-2.5"
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent-strong)]">
+                      Page {source.page}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      Source {idx + 1}
-                    </span>
+                    <span className="text-[11px] text-white/35">Excerpt {index + 1}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-                    {src.content}
-                  </p>
-                </div>
+                  <p className="text-sm leading-6 text-white/65">{source.content}</p>
+                </motion.div>
               ))}
             </div>
           </motion.div>
@@ -136,157 +163,145 @@ function SourcesPanel({ sources, pages }: { sources: Source[]; pages: number[] }
   );
 }
 
-function EmptyChat({ activeDocument }: { activeDocument: string | null }) {
+function EmptyState({
+  activeDocument,
+  onPromptSelect,
+}: {
+  activeDocument: string | null;
+  onPromptSelect: (prompt: string) => void;
+}) {
+  const prompts = getEmptyStatePrompts(activeDocument);
+
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-8">
-      <div className="relative mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-brand-muted border border-brand/20 flex items-center justify-center">
-          <Sparkles size={28} className="text-brand" />
+    <div className="mx-auto flex min-h-full w-full max-w-3xl items-center px-4 py-10">
+      <div className="w-full rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-md">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">
+          <Sparkles size={12} className="text-[var(--accent-strong)]" />
+          Retrieval Workspace
         </div>
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center">
-          <MessageSquare size={10} className="text-brand" />
+        <h1 className="max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.03em] text-white">
+          {activeDocument ? `Ask grounded questions about ${formatDocName(activeDocument)}.` : "A clean workspace for document-grounded chat."}
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+          {activeDocument
+            ? "Responses stay anchored to your selected PDF and include structured citations you can inspect inline."
+            : "Upload a document, select it from the sidebar, and keep the entire conversation centered in one focused column."}
+        </p>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          {prompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => onPromptSelect(prompt)}
+              className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-left text-sm text-zinc-400 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-zinc-200"
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
       </div>
-
-      {activeDocument ? (
-        <>
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            Ready to explore
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-            Ask anything about{" "}
-            <span className="text-foreground font-medium">
-              {formatDocName(activeDocument)}
-            </span>
-            . I'll find the most relevant sections and cite my sources.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2 justify-center max-w-sm">
-            {[
-              "Summarize the key points",
-              "What are the main conclusions?",
-              "List the important findings",
-            ].map((s) => (
-              <span
-                key={s}
-                className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground bg-card hover:border-brand/40 hover:text-foreground transition-colors cursor-default"
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            No document selected
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-            Upload a PDF or select an existing document from the sidebar to begin
-            chatting.
-          </p>
-        </>
-      )}
     </div>
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
-
 export default function RagChatApp() {
-  const [documentList, setDocumentList] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<string[]>([]);
   const [activeDocument, setActiveDocument] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Fetch documents on mount ───────────────────────────────────────────────
+  const citationCount = useMemo(
+    () => chatHistory.reduce((total, message) => total + (message.sources?.length ?? 0), 0),
+    [chatHistory],
+  );
+
   useEffect(() => {
-    fetchDocuments();
+    void fetchDocuments();
   }, []);
 
-  // ── Auto-scroll chat ───────────────────────────────────────────────────────
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory, isLoading]);
 
-  // ── Auto-dismiss error ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (error) {
-      const t = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(t);
-    }
+    if (!error) return;
+    const timeout = setTimeout(() => setError(null), 4500);
+    return () => clearTimeout(timeout);
   }, [error]);
 
   useEffect(() => {
-    if (uploadSuccess) {
-      const t = setTimeout(() => setUploadSuccess(null), 3000);
-      return () => clearTimeout(t);
-    }
+    if (!uploadSuccess) return;
+    const timeout = setTimeout(() => setUploadSuccess(null), 2500);
+    return () => clearTimeout(timeout);
   }, [uploadSuccess]);
 
-  // ── API: Fetch documents ───────────────────────────────────────────────────
   const fetchDocuments = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/documents`);
-      if (!res.ok) throw new Error("Failed to fetch documents");
-      const data = await res.json();
-      setDocumentList(data.documents || []);
+      const response = await fetch(`${BASE_URL}/documents`);
+      if (!response.ok) throw new Error("Failed to fetch documents");
+
+      const payload = (await response.json()) as { documents?: string[] };
+      const nextDocuments = Array.isArray(payload.documents) ? payload.documents : [];
+      setDocuments(nextDocuments);
+      setActiveDocument((current) => current ?? nextDocuments[0] ?? null);
     } catch {
-      setError("Could not connect to the backend. Is it running on port 8000?");
+      setError("Could not connect to the backend at http://localhost:8000.");
     }
   };
 
-  // ── API: Upload document ───────────────────────────────────────────────────
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
+
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       setError("Only PDF files are supported.");
       return;
     }
-    
-    // 15MB limit (15 * 1024 * 1024 bytes)
+
     if (file.size > 15 * 1024 * 1024) {
       setError("File is too large. Please upload a PDF smaller than 15MB.");
       return;
     }
 
     setIsUploading(true);
-    setUploadProgress(`Processing "${file.name}"…`);
+    setUploadProgress(`Uploading ${file.name}`);
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${BASE_URL}/upload`, {
+      const response = await fetch(`${BASE_URL}/upload`, {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Upload failed");
-      }
-      const data = await res.json();
-      const newDocId: string = data.doc_id;
 
-      setDocumentList((prev) =>
-        prev.includes(newDocId) ? prev : [...prev, newDocId]
-      );
-      setActiveDocument(newDocId);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || "Upload failed");
+      }
+
+      const payload = (await response.json()) as { doc_id: string };
+      const nextDocId = payload.doc_id;
+      setDocuments((current) => (current.includes(nextDocId) ? current : [nextDocId, ...current]));
+      setActiveDocument(nextDocId);
       setChatHistory([]);
-      setUploadSuccess(`"${formatDocName(newDocId)}" is ready to chat!`);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setUploadSuccess(`${formatDocName(nextDocId)} is ready.`);
+      setMobileSidebarOpen(false);
+    } catch (uploadError: unknown) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
@@ -294,504 +309,473 @@ export default function RagChatApp() {
     }
   };
 
-  // ── API: Delete document ───────────────────────────────────────────────────
   const handleDelete = async (docId: string) => {
     setDeletingDoc(docId);
+
     try {
-      const res = await fetch(`${BASE_URL}/documents/${docId}`, {
+      const response = await fetch(`${BASE_URL}/documents/${docId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Delete failed");
 
-      setDocumentList((prev) => prev.filter((d) => d !== docId));
+      if (!response.ok) throw new Error("Delete failed");
+
+      setDocuments((current) => {
+        const remaining = current.filter((doc) => doc !== docId);
+        setActiveDocument((selected) => (selected === docId ? remaining[0] ?? null : selected));
+        return remaining;
+      });
+
       if (activeDocument === docId) {
-        setActiveDocument(null);
         setChatHistory([]);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not delete document");
+    } catch (deleteError: unknown) {
+      setError(deleteError instanceof Error ? deleteError.message : "Could not delete document.");
     } finally {
       setDeletingDoc(null);
     }
   };
 
-  // ── API: Ask question ──────────────────────────────────────────────────────
-  const handleSend = useCallback(async () => {
-    const query = inputValue.trim();
-    if (!query || !activeDocument || isLoading) return;
+  const submitQuery = useCallback(
+    async (rawQuery: string) => {
+      const query = rawQuery.trim();
+      if (!query || !activeDocument || isLoading) return;
 
-    const userMsg: ChatMessage = {
-      id: genId(),
-      role: "user",
-      content: query,
-      timestamp: new Date(),
-    };
+      setChatHistory((current) => [
+        ...current,
+        { id: genId(), role: "user", content: query, timestamp: new Date() },
+      ]);
+      setInputValue("");
+      setIsLoading(true);
 
-    setChatHistory((prev) => [...prev, userMsg]);
-    setInputValue("");
-    setIsLoading(true);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
-    try {
-      const res = await fetch(`${BASE_URL}/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, doc_id: activeDocument }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Query failed");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
       }
-      const data = await res.json();
 
-      const aiMsg: ChatMessage = {
-        id: genId(),
-        role: "assistant",
-        content: data.answer,
-        sources: data.sources,
-        pages: data.pages,
-        timestamp: new Date(),
-      };
-      setChatHistory((prev) => [...prev, aiMsg]);
-    } catch (err: unknown) {
-      const errMsg: ChatMessage = {
-        id: genId(),
-        role: "assistant",
-        content:
-          err instanceof Error
-            ? `Error: ${err.message}`
-            : "Something went wrong. Please try again.",
-        timestamp: new Date(),
-      };
-      setChatHistory((prev) => [...prev, errMsg]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [inputValue, activeDocument, isLoading]);
+      try {
+        const response = await fetch(`${BASE_URL}/ask`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, doc_id: activeDocument }),
+        });
 
-  // ── Textarea auto-resize + Enter key ──────────────────────────────────────
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
-    e.target.style.height = "auto";
-    e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.detail || "Query failed");
+        }
+
+        const payload = (await response.json()) as {
+          answer: string;
+          sources?: Source[];
+          pages?: number[];
+        };
+
+        setChatHistory((current) => [
+          ...current,
+          {
+            id: genId(),
+            role: "assistant",
+            content: payload.answer,
+            sources: Array.isArray(payload.sources) ? payload.sources : [],
+            pages: Array.isArray(payload.pages) ? payload.pages : [],
+            timestamp: new Date(),
+          },
+        ]);
+      } catch (askError: unknown) {
+        setChatHistory((current) => [
+          ...current,
+          {
+            id: genId(),
+            role: "assistant",
+            content:
+              askError instanceof Error ? `Error: ${askError.message}` : "Something went wrong. Please try again.",
+            timestamp: new Date(),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [activeDocument, isLoading],
+  );
+
+  const handleSend = useCallback(async () => {
+    await submitQuery(inputValue);
+  }, [inputValue, submitQuery]);
+
+  const handlePromptSelect = useCallback(
+    async (prompt: string) => {
+      setInputValue(prompt);
+      await submitQuery(prompt);
+    },
+    [submitQuery],
+  );
+
+  const handleTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(event.target.value);
+    event.target.style.height = "auto";
+    event.target.style.height = `${Math.min(event.target.scrollHeight, 160)}px`;
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void handleSend();
     }
   };
 
-  // ── Select document ────────────────────────────────────────────────────────
   const selectDocument = (docId: string) => {
     if (docId === activeDocument) return;
     setActiveDocument(docId);
     setChatHistory([]);
+    setMobileSidebarOpen(false);
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
-      {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-      <AnimatePresence initial={false}>
-        {sidebarOpen && (
-          <motion.aside
-            key="sidebar"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="flex-shrink-0 flex flex-col border-r border-border overflow-hidden"
-            style={{ background: "var(--sidebar)" }}
+  const sidebar = (
+    <aside className="flex h-full w-72 flex-col rounded-2xl border border-white/10 bg-[rgba(18,20,27,0.78)] shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+      <div className="border-b border-white/8 px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/40">Documents</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">RAG Workspace</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="hidden rounded-lg border border-white/10 bg-white/[0.04] p-2 text-white/55 transition hover:bg-white/[0.08] hover:text-white lg:inline-flex"
+            aria-label="Collapse sidebar"
           >
-            {/* Sidebar header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-brand/15 border border-brand/25 flex items-center justify-center">
-                  <FileSearch size={14} className="text-brand" />
-                </div>
-                <span className="font-semibold text-sm tracking-tight text-foreground">
-                  DocMind
-                </span>
-              </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent"
-              >
-                <PanelLeftClose size={15} />
-              </button>
-            </div>
+            <X size={14} />
+          </button>
+        </div>
 
-            {/* Upload section */}
-            <div className="px-3 py-3 border-b border-border">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={handleUpload}
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className={`flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all duration-200 text-sm font-medium group
-                  ${
-                    isUploading
-                      ? "border-brand/40 bg-brand-muted text-brand cursor-not-allowed"
-                      : "border-border hover:border-brand/50 hover:bg-brand-muted/60 text-muted-foreground hover:text-brand"
-                  }`}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="text-xs truncate max-w-[160px]">
-                      {uploadProgress || "Uploading…"}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <FilePlus2 size={14} />
-                    <span>Upload PDF</span>
-                  </>
-                )}
-              </label>
-              <p className="text-[10px] text-muted-foreground/60 text-center mt-2 font-medium">
-                Max file size: 15MB
-              </p>
-            </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+            <p className="text-[11px] text-white/40">Docs</p>
+            <p className="mt-1 font-medium text-white">{documents.length}</p>
+          </div>
+          <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+            <p className="text-[11px] text-white/40">Citations</p>
+            <p className="mt-1 font-medium text-white">{citationCount}</p>
+          </div>
+        </div>
+      </div>
 
-            {/* Document list */}
-            <div className="flex-1 overflow-y-auto px-3 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1 mb-2">
-                Documents ({documentList.length})
-              </p>
+      <div className="px-4 py-4">
+        <input
+          ref={fileInputRef}
+          id="pdf-upload"
+          type="file"
+          accept=".pdf"
+          className="hidden"
+          onChange={handleUpload}
+        />
+        <label
+          htmlFor="pdf-upload"
+          className={`flex h-10 items-center justify-between rounded-xl border px-3 text-sm transition ${
+            isUploading
+              ? "border-white/15 bg-white/[0.08] text-white"
+              : "border-white/10 bg-white/[0.04] text-white/80 hover:bg-white/[0.06]"
+          }`}
+        >
+          <span className="flex min-w-0 items-center gap-2.5">
+            {isUploading ? <Loader2 size={15} className="animate-spin" /> : <FilePlus2 size={15} />}
+            <span className="truncate">{isUploading ? uploadProgress || "Uploading" : "Upload PDF"}</span>
+          </span>
+          <span className="text-[11px] text-white/40">15MB</span>
+        </label>
+      </div>
 
-              {documentList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
-                    <FileText size={18} className="text-muted-foreground/50" />
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    No documents yet.
-                    <br />
-                    Upload a PDF to get started.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <AnimatePresence>
-                    {documentList.map((doc) => {
-                      const isActive = doc === activeDocument;
-                      const isDeleting = doc === deletingDoc;
-                      return (
-                        <motion.div
-                          key={doc}
-                          layout
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
-                            isActive
-                              ? "bg-brand/10 border border-brand/20"
-                              : "hover:bg-accent border border-transparent"
-                          }`}
-                          onClick={() => !isDeleting && selectDocument(doc)}
-                        >
-                          <div
-                            className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                              isActive
-                                ? "bg-brand/15 text-brand"
-                                : "bg-muted text-muted-foreground group-hover:text-foreground"
-                            }`}
-                          >
-                            <FileText size={12} />
-                          </div>
-                          <span
-                            className={`flex-1 text-xs font-medium truncate ${
-                              isActive ? "text-brand" : "text-foreground"
-                            }`}
-                            title={doc}
-                          >
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        <div className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.16em] text-white/35">Library</div>
+
+        {documents.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-4 py-5 text-center text-sm text-white/45">
+            Upload your first PDF to begin.
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <AnimatePresence initial={false}>
+              {documents.map((doc) => {
+                const isActive = doc === activeDocument;
+                const isDeleting = doc === deletingDoc;
+
+                return (
+                  <motion.div
+                    key={doc}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className={`group rounded-xl border transition ${
+                      isActive
+                        ? "border-white/15 bg-white/[0.07]"
+                        : "border-transparent bg-transparent hover:border-white/8 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <button
+                        type="button"
+                        onClick={() => selectDocument(doc)}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60">
+                          <FileText size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`truncate text-sm font-medium ${isActive ? "text-white" : "text-white/78"}`}>
                             {formatDocName(doc)}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(doc);
-                            }}
-                            disabled={isDeleting}
-                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
-                          >
-                            {isDeleting ? (
-                              <Loader2 size={11} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={11} />
-                            )}
-                          </button>
-                        </motion.div>
-                      );
-                    })}
+                          </p>
+                          <p className="truncate text-xs text-white/35">{doc}</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(doc)}
+                        disabled={isDeleting}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/35 transition hover:bg-red-400/10 hover:text-red-200 disabled:opacity-60"
+                        aria-label={`Delete ${doc}`}
+                      >
+                        {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+
+  return (
+    <main className="min-h-screen bg-[var(--app-bg)] text-white">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(120,140,170,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(90,110,130,0.08),transparent_22%)]">
+        <div className="mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 sm:px-4 sm:py-4">
+          <div className={`hidden lg:block ${sidebarOpen ? "w-72 shrink-0" : "w-0 overflow-hidden"}`}>{sidebar}</div>
+
+          <AnimatePresence>
+            {mobileSidebarOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+                onClick={() => setMobileSidebarOpen(false)}
+              >
+                <motion.div
+                  initial={{ x: -20 }}
+                  animate={{ x: 0 }}
+                  exit={{ x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-3"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {sidebar}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <section className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-white/10 bg-[rgba(16,18,24,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+            <header className="flex items-center gap-3 border-b border-white/8 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/60 transition hover:bg-white/[0.08] lg:hidden"
+                aria-label="Open sidebar"
+              >
+                <Menu size={16} />
+              </button>
+
+              {!sidebarOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm text-white/60 transition hover:bg-white/[0.08] lg:inline-flex"
+                >
+                  <Menu size={16} />
+                  Documents
+                </button>
+              )}
+
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-[var(--accent-strong)]">
+                <Search size={16} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-base font-semibold text-white">
+                  {activeDocument ? formatDocName(activeDocument) : "RAG Chat"}
+                </h1>
+                <p className="truncate text-sm text-white/45">
+                  {activeDocument ? "Grounded answers with inline citations" : "Select a document to start"}
+                </p>
+              </div>
+
+              {chatHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setChatHistory([])}
+                  className="h-9 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm text-white/58 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
+            </header>
+
+            <AnimatePresence>
+              {(error || uploadSuccess) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="absolute left-1/2 top-4 z-20 w-full max-w-md -translate-x-1/2 px-4"
+                >
+                  <div
+                    className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm backdrop-blur-xl ${
+                      error
+                        ? "border-red-400/20 bg-red-500/10 text-red-100"
+                        : "border-emerald-300/15 bg-emerald-400/10 text-emerald-50"
+                    }`}
+                  >
+                    {error ? <AlertCircle size={15} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={15} className="mt-0.5 shrink-0" />}
+                    <p className="flex-1 leading-6">{error || uploadSuccess}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setUploadSuccess(null);
+                      }}
+                      className="text-current/70 transition hover:text-current"
+                      aria-label="Dismiss"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex-1 overflow-y-auto pb-32">
+              {chatHistory.length === 0 && !isLoading ? (
+                <EmptyState activeDocument={activeDocument} onPromptSelect={handlePromptSelect} />
+              ) : (
+                <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6">
+                  <AnimatePresence initial={false}>
+                    {chatHistory.map((message) => (
+                      <motion.div
+                        key={message.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div className={`max-w-[85%] ${message.role === "user" ? "items-end" : "items-start"}`}>
+                          {message.role === "user" ? (
+                            <div className="rounded-2xl rounded-br-md border border-white/10 bg-white/[0.08] px-4 py-2.5 text-sm leading-6 text-white">
+                              {message.content}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                              <div className="markdown-body text-sm leading-6">
+                                <ReactMarkdown
+                                  components={{
+                                    h1: ({ ...props }) => <h1 className="mb-2 mt-4 text-lg font-semibold text-white first:mt-0" {...props} />,
+                                    h2: ({ ...props }) => <h2 className="mb-2 mt-4 text-base font-semibold text-white first:mt-0" {...props} />,
+                                    h3: ({ ...props }) => <h3 className="mb-2 mt-3 text-sm font-semibold text-white first:mt-0" {...props} />,
+                                    p: ({ ...props }) => <p className="mb-2 whitespace-pre-wrap text-white/78 last:mb-0" {...props} />,
+                                    ul: ({ ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5 text-white/78" {...props} />,
+                                    ol: ({ ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5 text-white/78" {...props} />,
+                                    li: ({ ...props }) => <li {...props} />,
+                                    strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
+                                    code: ({ ...props }) => <code className="rounded bg-white/[0.06] px-1 py-0.5 font-mono text-[0.95em] text-[var(--accent-strong)]" {...props} />,
+                                  }}
+                                >
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
+                              {message.sources && message.pages && <CitationsPanel sources={message.sources} pages={message.pages} />}
+                            </div>
+                          )}
+
+                          <div className={`mt-1.5 px-1 text-[11px] text-white/32 ${message.role === "user" ? "text-right" : "text-left"}`}>
+                            {formatTime(message.timestamp)}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+
+                    {isLoading && (
+                      <motion.div
+                        key="typing"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 12 }}
+                        className="flex justify-start"
+                      >
+                        <TypingIndicator />
+                      </motion.div>
+                    )}
                   </AnimatePresence>
+                  <div ref={chatEndRef} />
                 </div>
               )}
             </div>
 
-            {/* Sidebar footer */}
-            <div className="px-4 py-3 border-t border-border">
-              <p className="text-[10px] text-muted-foreground/50 text-center">
-                Powered by local RAG · 2026
-              </p>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {/* ── Main area ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border backdrop-blur-sm bg-background/80 z-10">
-          {!sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-accent"
-            >
-              <PanelLeftOpen size={16} />
-            </button>
-          )}
-
-          {!sidebarOpen && (
-            <div className="flex items-center gap-2 mr-2">
-              <div className="w-6 h-6 rounded-md bg-brand/15 border border-brand/25 flex items-center justify-center">
-                <FileSearch size={12} className="text-brand" />
-              </div>
-              <span className="font-semibold text-sm tracking-tight">DocMind</span>
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            {activeDocument ? (
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                <span className="text-sm font-medium text-foreground truncate">
-                  {formatDocName(activeDocument)}
-                </span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">
-                  · Ready
-                </span>
-              </div>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                Select a document to begin
-              </span>
-            )}
-          </div>
-
-          {chatHistory.length > 0 && (
-            <button
-              onClick={() => setChatHistory([])}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border hover:bg-accent transition-all"
-            >
-              <X size={11} />
-              Clear chat
-            </button>
-          )}
-        </header>
-
-        {/* Toast notifications */}
-        <AnimatePresence>
-          {(error || uploadSuccess) && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="absolute top-16 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4"
-            >
-              <div
-                className={`flex items-start gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm backdrop-blur-sm ${
-                  error
-                    ? "bg-destructive/10 border-destructive/30 text-destructive"
-                    : "bg-brand/10 border-brand/30 text-brand"
-                }`}
-              >
-                {error ? (
-                  <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-                ) : (
-                  <CheckCircle2 size={15} className="flex-shrink-0 mt-0.5" />
+            <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
+              <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-[rgba(20,22,30,0.88)] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+                {!activeDocument && (
+                  <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300/12 bg-amber-400/8 px-3 py-2 text-sm text-amber-100/85">
+                    <AlertCircle size={14} className="shrink-0" />
+                    Select or upload a document to enable chat.
+                  </div>
                 )}
-                <span className="flex-1 leading-snug">{error || uploadSuccess}</span>
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setUploadSuccess(null);
-                  }}
-                  className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Chat area */}
-        <div className="flex-1 overflow-y-auto">
-          {chatHistory.length === 0 && !isLoading ? (
-            <EmptyChat activeDocument={activeDocument} />
-          ) : (
-            <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-              <AnimatePresence initial={false}>
-                {chatHistory.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className={`flex gap-3 ${
-                      msg.role === "user" ? "justify-end" : "justify-start"
+                <div className="flex items-end gap-2.5">
+                <div className="flex-1 rounded-xl border border-white/10 bg-black/15 px-3 py-2.5 transition focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10">
+                  <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      value={inputValue}
+                      onChange={handleTextareaChange}
+                      onKeyDown={handleKeyDown}
+                      disabled={!activeDocument || isLoading}
+                      placeholder={
+                        activeDocument
+                          ? `Ask about ${formatDocName(activeDocument)}...`
+                          : "Choose a document to start..."
+                      }
+                      className="min-h-[22px] max-h-[160px] w-full resize-none overflow-y-auto bg-transparent text-sm leading-6 text-white placeholder:text-zinc-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <motion.button
+                    type="button"
+                    whileHover={inputValue.trim() && activeDocument && !isLoading ? { scale: 1.02 } : undefined}
+                    whileTap={inputValue.trim() && activeDocument && !isLoading ? { scale: 0.98 } : undefined}
+                    onClick={() => void handleSend()}
+                    disabled={!inputValue.trim() || !activeDocument || isLoading}
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition ${
+                      inputValue.trim() && activeDocument && !isLoading
+                        ? "border-white/15 bg-white/[0.10] text-white hover:bg-white/[0.14]"
+                        : "border-white/10 bg-white/[0.04] text-white/25"
                     }`}
+                    aria-label="Send message"
                   >
-                    {msg.role === "assistant" && (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-brand/15 border border-brand/25 flex items-center justify-center mt-0.5">
-                        <Sparkles size={14} className="text-brand" />
-                      </div>
-                    )}
+                    {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                  </motion.button>
+                </div>
 
-                    <div
-                      className={`flex flex-col max-w-[82%] ${
-                        msg.role === "user" ? "items-end" : "items-start"
-                      }`}
-                    >
-                      {msg.role === "user" ? (
-                        <div className="px-4 py-3 rounded-2xl rounded-tr-sm bg-brand text-brand-foreground text-sm leading-relaxed shadow-sm">
-                          {msg.content}
-                        </div>
-                      ) : (
-                        <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-card border border-border text-sm leading-relaxed text-foreground shadow-sm">
-                          <div className="text-sm prose-sm max-w-none">
-                            <ReactMarkdown
-                              components={{
-                                h1: ({node, ...props}: any) => <h1 className="text-xl font-bold mt-4 mb-2 text-foreground" {...props} />,
-                                h2: ({node, ...props}: any) => <h2 className="text-lg font-bold mt-4 mb-2 text-foreground" {...props} />,
-                                h3: ({node, ...props}: any) => <h3 className="text-base font-bold mt-3 mb-1 text-foreground" {...props} />,
-                                p: ({node, ...props}: any) => <p className="mb-2 leading-relaxed whitespace-pre-wrap text-foreground/90 last:mb-0" {...props} />,
-                                ul: ({node, ...props}: any) => <ul className="list-disc list-outside ml-5 mb-3 text-foreground/90" {...props} />,
-                                ol: ({node, ...props}: any) => <ol className="list-decimal list-outside ml-5 mb-3 text-foreground/90" {...props} />,
-                                li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
-                                strong: ({node, ...props}: any) => <strong className="font-semibold text-foreground" {...props} />
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
-                          </div>
-                          {msg.sources && msg.pages && (
-                            <SourcesPanel
-                              sources={msg.sources}
-                              pages={msg.pages}
-                            />
-                          )}
-                        </div>
-                      )}
-                      <span className="text-[10px] text-muted-foreground/50 mt-1 px-1">
-                        {msg.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-
-                    {msg.role === "user" && (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-muted border border-border flex items-center justify-center mt-0.5 text-xs font-semibold text-muted-foreground">
-                        U
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-
-                {/* Typing indicator */}
-                {isLoading && (
-                  <motion.div
-                    key="typing"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="flex gap-3 justify-start"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-brand/15 border border-brand/25 flex items-center justify-center">
-                      <Sparkles size={14} className="text-brand" />
-                    </div>
-                    <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-card border border-border shadow-sm">
-                      <TypingIndicator />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div ref={chatEndRef} />
+                <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-white/32">
+                  <span>Enter to send</span>
+                  <span>{activeDocument ? formatDocName(activeDocument) : "No document selected"}</span>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Input area */}
-        <div className="border-t border-border bg-background/95 backdrop-blur-sm px-4 py-4">
-          <div className="max-w-3xl mx-auto">
-            {!activeDocument && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-xs text-muted-foreground text-center mb-3 flex items-center justify-center gap-1.5"
-              >
-                <AlertCircle size={11} />
-                Select or upload a document to enable the chat
-              </motion.p>
-            )}
-
-            <div
-              className={`flex items-end gap-3 px-4 py-3 rounded-2xl border transition-all duration-200 ${
-                activeDocument
-                  ? "border-border bg-card focus-within:border-brand/50 focus-within:ring-1 focus-within:ring-brand/20"
-                  : "border-border/50 bg-muted/30 opacity-60"
-              }`}
-            >
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyDown}
-                disabled={!activeDocument || isLoading}
-                placeholder={
-                  activeDocument
-                    ? `Ask about ${formatDocName(activeDocument)}…`
-                    : "Select a document to chat…"
-                }
-                rows={1}
-                className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none leading-relaxed min-h-[22px] max-h-[140px] overflow-y-auto"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || !activeDocument || isLoading}
-                className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                  inputValue.trim() && activeDocument && !isLoading
-                    ? "bg-brand text-brand-foreground hover:opacity-90 shadow-sm"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                }`}
-              >
-                {isLoading ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Send size={14} />
-                )}
-              </button>
-            </div>
-            <p className="text-[10px] text-muted-foreground/40 text-center mt-2">
-              Press Enter to send · Shift+Enter for new line
-            </p>
-          </div>
+          </section>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

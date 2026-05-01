@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DocMind — Local RAG Assistant",
-  description: "Chat with your documents using a local AI powered by Retrieval-Augmented Generation.",
+  title: "Atlas RAG Studio",
+  description: "A premium retrieval workspace for grounded conversations with your local documents.",
 };
 
 export default function RootLayout({
