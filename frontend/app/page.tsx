@@ -33,7 +33,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function genId() {
   return Math.random().toString(36).slice(2, 10);
