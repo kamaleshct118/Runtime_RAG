@@ -1,69 +1,121 @@
-# Advanced Document Intelligence & Semantic Synthesis Engine
-
-An experimental, high-performance **Local RAG (Retrieval-Augmented Generation) Framework** designed to emulate the analytical depth of "NotebookLLM" within a completely private, local environment. This project explores the frontiers of semantic document understanding by implementing sophisticated retrieval architectures and grounded synthesis pipelines.
-
-## 🚀 Core Methodologies Implemented
-
-This project transcends basic vector search by implementing a multi-layered retrieval strategy to ensure maximum accuracy and contextual relevance.
-
-### 1. Multi-Query Semantic Expansion
-To bridge the gap between user intent and document terminology, I **implemented a multi-query expansion layer**. The system utilizes a local LLM to decompose a single user query into multiple semantic perspectives. This technique:
-- Corrects orthographic variations and technical typos in the input.
-- Generates diversified search vectors to capture information that might be phrased differently across sections.
-- Enhances recall by aggregating results from several "semantic viewpoints."
-
-### 2. The "Neighborhood Search" Rule
-Recognizing that relevant information is often contiguous rather than isolated, I **tried out a neighborhood-based retrieval strategy**. When the engine detects queries targeting early document segments (e.g., abstracts, introductions), it dynamically expands its search radius to the surrounding pages. This ensures that the context provided to the LLM is comprehensive and structurally coherent.
-
-### 3. High-Fidelity Grounded Synthesis
-The generation pipeline is strictly **grounded on the retrieved context**. I implemented a "Zero-Hallucination" prompt architecture that enforces:
-- **Strict Factual Adherence**: The model is prohibited from inventing data, formulas, or code not present in the source.
-- **Consolidated Summarization**: Multiple overlapping chunks are synthesized into a coherent, non-repetitive response.
-- **Source Transparency**: Every answer is derived from specific page-level metadata preserved during the ingestion process.
+<div align="center">
+  <h1>Runtime RAG: Advanced Document Intelligence Engine</h1>
+  <p>A high-performance, full-stack Retrieval-Augmented Generation (RAG) framework utilizing FastAPI, Next.js, FAISS, and the Groq API for lightning-fast, highly accurate document analysis.</p>
+</div>
 
 ---
 
-## 🛠️ Technical Architecture
+## 🎯 What is this Experiment About?
 
-The engine is built on a robust, local-first stack optimized for speed and privacy:
+**Runtime RAG** is an advanced exploration into building a "NotebookLLM-like" experience. The goal of this experiment is to create a blazing-fast, hallucination-free AI assistant that can read, understand, and answer questions about your private PDF documents. 
 
-- **Inference Engine**: [Ollama](https://ollama.ai/) running customized models (e.g., Mistral/Llama3) for high-reasoning tokens.
-- **Vector Database**: [FAISS](https://github.com/facebookresearch/faiss) for efficient similarity search with `all-MiniLM-L6-v2` embeddings.
-- **Orchestration**: Built with **LangChain**, utilizing `RecursiveCharacterTextSplitter` for semantic chunking and `PyMuPDF` for high-accuracy PDF parsing.
-- **Optimization Layer**: I implemented a **RAM-based caching system** for both the embedding models and vector stores. This ensures that subsequent interactions are nearly instantaneous, as model weights and indices remain resident in memory.
+By leveraging the **Groq API** (using `ChatOpenAI` wrappers), this framework achieves dramatically reduced inference latency while maintaining the intelligence of massive models. It goes beyond standard "toy" RAG tutorials by implementing enterprise-grade retrieval techniques like **Multi-Query Semantic Expansion** and **Contextual Neighborhood Searching**.
 
----
-
-## 📈 Performance & Experience
-
-By leveraging **semantic chunking** (400-token windows with 50-token overlap), the engine maintains the granular nuance of technical documents while providing enough context for the LLM to understand complex relationships. The result is a project that successfully **tries out a "NotebookLLM-like" experience**—allowing users to interact with their personal library of documents with zero data leakage to the cloud.
+Whether you are a beginner looking to understand how AI reads documents, a learner studying advanced search algorithms, or an expert analyzing full-stack RAG pipelines, this repository serves as a comprehensive blueprint.
 
 ---
 
-## 🖥️ Getting Started
+## ⚡ Architectural Design: The Groq API & Hybrid Privacy
+
+This framework is built specifically around the **Groq API** to maximize speed without sacrificing data security. Here is an analysis of the technical design:
+
+* **The Groq API Advantage:** Standard local RAG systems or traditional cloud APIs can cause latency spikes, breaking the "conversational" feel of an assistant. Groq utilizes custom LPU (Language Processing Unit) hardware designed specifically for blazing-fast inference. The generation layer processes massive context windows and outputs answers at over 800 tokens per second, resulting in a near-instantaneous user experience.
+* **The Hybrid Privacy Approach:** While generation relies on the lightning-fast Groq API, we preserve maximum privacy in the *Retrieval* phase. The embeddings (`HuggingFaceEmbeddings`) and the vector database (`FAISS`) **run entirely locally on your machine**. Your entire PDF is never uploaded to a cloud server. Only the specific, highly-filtered context chunks required to answer a single question are securely sent over the Groq API. This achieves the perfect balance: the absolute privacy and cost-efficiency of local vector search combined with the unmatched speed of cloud-based LPU inference.
+
+---
+
+## 🧠 Theoretical Concepts & Architecture Walkthrough
+
+At its core, a RAG system prevents AI hallucinations by forcing the LLM to read relevant document snippets *before* it answers a question. Here is how the system is organized and exactly what every component does.
+
+### 1. The Ingestion Pipeline (`backend/loader.py`)
+
+* **What it does:** Extracts text from uploaded PDFs and slices it into manageable pieces.
+* **Why it is used:** LLMs have limited "context windows" (memory). You cannot feed a 1,000-page book into an AI all at once. We must break the book into "chunks."
+* **The Theory:** We use a `RecursiveCharacterTextSplitter`. Instead of cutting blindly every 400 characters, it recursively looks for double newlines (`\n\n`), then single newlines, then periods. This guarantees that **sentences and paragraphs are not cut in half**, preserving semantic meaning.
+* **Similar Tech:** `PyPDF2` (Slower, worse formatting preservation). We use `PyMuPDFLoader` because it is currently the industry standard for fast, highly accurate PDF parsing in Python.
+
+### 2. The Vectorizer & Storage (`backend/indexer.py`)
+
+* **What it does:** Converts human text chunks into massive arrays of numbers (vectors) and saves them to a database.
+* **Why it is used:** Computers cannot measure the "distance" between words, but they can measure the distance between numbers. By converting text into vectors using `HuggingFaceEmbeddings`, the system can instantly find text that means the same thing, even if different words are used.
+* **The Theory:** We use **FAISS** (Facebook AI Similarity Search) as our database. It uses L2 (Euclidean) distance or Cosine Similarity to find vectors pointing in the same direction.
+* **Similar Tech:** `ChromaDB` or `Pinecone`. Pinecone is cloud-based (costs money, requires internet). ChromaDB is great, but FAISS is exceptionally lightweight and perfectly suited for fast, localized RAM-based retrieval without spinning up Docker containers.
+
+### 3. The Brain & Retrieval Engine (`backend/retriever.py`)
+
+This file contains the "secret sauce" of the project, elevating it above basic RAG systems.
+
+* **What it does:** Intercepts the user's question, optimizes it, searches the FAISS database, and forces the LLM to write a grounded answer.
+* **The Theory (Multi-Query Expansion):** Beginners often ask vague or misspelled questions. Instead of taking the user's prompt directly to the database, we pass it to the Groq LLM first with a strict prompt: *"Generate exactly 3 highly effective search queries."* This casts a wider net and drastically improves search recall.
+* **The Theory (Neighborhood Search):** If the system detects the user is asking for a "summary," and it finds relevant text on Page 1, it automatically triggers a secondary search to grab Pages 2 and 3. This ensures the AI doesn't miss the rest of an Introduction that spans a page break.
+* **Why it is used:** To completely eliminate AI hallucinations. The prompt explicitly threatens the LLM: *If the context does not contain the answer, respond EXACTLY with "Information not found".*
+
+### 4. The API Layer (`backend/api.py`)
+
+* **What it does:** The bridge between the Python AI logic and the outside world.
+* **Why it is used:** To serve the AI over standard HTTP protocols so a web frontend can interact with it.
+* **Similar Tech:** `Flask` or `Django`. We use **FastAPI** because it is asynchronous, natively supports Pydantic data validation (ensuring the frontend sends the correct JSON payloads), and auto-generates Swagger documentation.
+
+### 5. The Frontend Interface (`frontend/`)
+
+* **What it does:** A sleek, modern web interface built with **Next.js** and React.
+* **Why it is used:** To provide a ChatGPT-like user experience where users can upload PDFs visually, view the parsing status, and chat with their documents.
+* **Similar Tech:** `Streamlit` or `Gradio`. While Streamlit is great for rapid prototyping, a custom Next.js frontend allows for infinitely more control over the UI/UX, animations, and complex state management (like rendering chat histories).
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.10+
-- [Ollama](https://ollama.com/) installed and running locally.
+- Node.js 18+
+- A free [Groq API Key](https://console.groq.com/keys)
 
-### Installation
-1. Clone the repository and navigate to the project directory.
-2. Install dependencies:
+### Backend Setup
+1. Navigate to the backend directory:
    ```bash
+   cd backend
+   ```
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    ```
-3. Configure your local model in `config.py`:
+3. Configure your API keys in `config.py` (duplicate `config.example.py` if needed):
    ```python
-   MODEL_NAME = "mistral-custom:latest"
-   EMBED_MODEL = "all-MiniLM-L6-v2"
+   # backend/config.py
+   GROQ_API_KEY = "gsk_your_api_key_here"
+   MODEL_NAME = "llama3-8b-8192" # Or any supported Groq model
    ```
+4. Start the FastAPI server:
+   ```bash
+   python api.py
+   ```
+   *The API will be live at `http://localhost:8000`*
 
-### Operational Workflow
-1. **Ingestion**: Drop your PDFs into the `uploads/` directory.
-2. **Indexing**: Run the indexer to generate the FAISS vector stores.
-3. **Inference**: Use the interactive CLI or API to query your documents.
+### Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+   *The UI will be accessible at `http://localhost:3000`*
 
 ---
 
-> [!NOTE]  
-> This project was developed as a deep dive into **Agentic Retrieval** and **Local Document Intelligence**. It serves as a proof-of-concept for high-accuracy, private document analysis.
+## 🛠️ Future Roadmap
+
+- **Conversational Memory:** Injecting Chat History arrays into the multi-query prompt to allow for follow-up questions ("What did you mean by that?").
+- **Cross-Document Search:** Allowing the FAISS indexer to load multiple documents into RAM simultaneously for comparative analysis.
+- **Support for More Extensions:** Expanding `loader.py` to handle `.docx`, `.csv`, and Markdown files.
+
+> **Note to Learners:** If you are studying this codebase, pay special attention to `backend/retriever.py`. Understanding how `generate_queries` and the grounded Prompt Engineering work is crucial to mastering modern AI application development.
