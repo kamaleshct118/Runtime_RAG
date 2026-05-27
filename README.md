@@ -51,7 +51,7 @@ This file contains the "secret sauce" of the project, elevating it above basic R
 * **The Theory (Neighborhood Search):** If the system detects the user is asking for a "summary," and it finds relevant text on Page 1, it automatically triggers a secondary search to grab Pages 2 and 3. This ensures the AI doesn't miss the rest of an Introduction that spans a page break.
 * **Why it is used:** To completely eliminate AI hallucinations. The prompt explicitly threatens the LLM: *If the context does not contain the answer, respond EXACTLY with "Information not found".*
 
-### 4. The API Layer (`backend/api.py`)
+### 4. The API Layer (`backend/main.py`)
 
 * **What it does:** The bridge between the Python AI logic and the outside world.
 * **Why it is used:** To serve the AI over standard HTTP protocols so a web frontend can interact with it.
@@ -91,7 +91,7 @@ This file contains the "secret sauce" of the project, elevating it above basic R
    ```
 4. Start the FastAPI server:
    ```bash
-   python api.py
+   python main.py
    ```
    *The API will be live at `http://localhost:8000`*
 

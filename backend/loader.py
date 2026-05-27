@@ -3,7 +3,7 @@ import os
 import shutil
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import config
+import env
 
 def process_pdf(file_path):
     """
@@ -15,8 +15,8 @@ def process_pdf(file_path):
     base_name = os.path.basename(file_path)
     doc_id = re.sub(r'[^a-zA-Z0-9]', '_', os.path.splitext(base_name)[0])
     
-    os.makedirs(config.UPLOAD_DIR, exist_ok=True)
-    dest_path = os.path.join(config.UPLOAD_DIR, base_name)
+    os.makedirs(env.UPLOAD_DIR, exist_ok=True)
+    dest_path = os.path.join(env.UPLOAD_DIR, base_name)
     if os.path.abspath(file_path) != os.path.abspath(dest_path):
         shutil.copy2(file_path, dest_path)
     

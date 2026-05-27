@@ -11,3 +11,5 @@ uvicorn
 einops
 python-multipart
 pydantic
+supabase
+python-dotenv

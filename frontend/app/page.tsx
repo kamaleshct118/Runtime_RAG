@@ -53,9 +53,9 @@ function formatTime(date: Date) {
 function getEmptyStatePrompts(activeDocument: string | null) {
   return activeDocument
     ? [
-        "Summarize the key points.",
-        "What evidence supports the main claim?",
-        "Which pages should I review first?",
+        "Provide a comprehensive summary of the main topics in this document.",
+        "Explain the core concepts, key terms, or methodologies introduced.",
+        "What are the main conclusions, findings, or actionable takeaways?",
       ]
     : [
         "Upload a PDF under 15MB.",
@@ -83,7 +83,10 @@ function CitationsPanel({ sources, pages }: { sources: Source[]; pages: number[]
   if (!sources.length) return null;
 
   return (
-    <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+    <div 
+      className="mt-3 overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-md transition-all duration-300 hover:border-white/15"
+      style={{ perspective: 1000 }}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -112,7 +115,7 @@ function CitationsPanel({ sources, pages }: { sources: Source[]; pages: number[]
           </div>
           <ChevronDown
             size={14}
-            className={`text-white/45 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`text-white/45 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
           />
         </div>
       </button>
@@ -120,13 +123,14 @@ function CitationsPanel({ sources, pages }: { sources: Source[]; pages: number[]
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ height: 0, opacity: 0, rotateX: -15, transformOrigin: "top" }}
+            animate={{ height: "auto", opacity: 1, rotateX: 0 }}
+            exit={{ height: 0, opacity: 0, rotateX: -15 }}
+            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
+            style={{ transformStyle: "preserve-3d" }}
           >
-            <div className="space-y-2 border-t border-white/8 px-3 py-3">
+            <div className="space-y-2 border-t border-white/8 px-3 py-3 bg-black/10">
               <div className="flex flex-wrap gap-1 sm:hidden">
                 {pages.map((page) => (
                   <span
@@ -141,10 +145,10 @@ function CitationsPanel({ sources, pages }: { sources: Source[]; pages: number[]
               {sources.map((source, index) => (
                 <motion.div
                   key={`${source.page}-${index}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="rounded-lg border border-white/8 bg-black/15 px-3 py-2.5"
+                  initial={{ opacity: 0, y: 10, rotateX: -10 }}
+                  animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                  transition={{ delay: index * 0.04, duration: 0.4 }}
+                  className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2.5 backdrop-blur-sm"
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent-strong)]">
@@ -173,10 +177,19 @@ function EmptyState({
   const prompts = getEmptyStatePrompts(activeDocument);
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl items-center px-4 py-10">
-      <div className="w-full rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-md">
+    <div 
+      className="mx-auto flex min-h-full w-full max-w-3xl items-center px-4 py-10"
+      style={{ perspective: 1200 }}
+    >
+      <motion.div 
+        initial={{ opacity: 0, rotateX: 18, rotateY: -6, y: 40, scale: 0.96 }}
+        animate={{ opacity: 1, rotateX: 0, rotateY: 0, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-lg"
+        style={{ transformStyle: "preserve-3d" }}
+      >
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">
-          <Sparkles size={12} className="text-[var(--accent-strong)]" />
+          <Sparkles size={12} className="text-[var(--accent-strong)] animate-pulse" />
           Retrieval Workspace
         </div>
         <h1 className="max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.03em] text-white">
@@ -188,19 +201,31 @@ function EmptyState({
             : "Upload a document, select it from the sidebar, and keep the entire conversation centered in one focused column."}
         </p>
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          {prompts.map((prompt) => (
-            <button
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {prompts.map((prompt, index) => (
+            <motion.button
               key={prompt}
               type="button"
               onClick={() => onPromptSelect(prompt)}
-              className="cursor-pointer rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-left text-sm text-zinc-400 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-zinc-200"
+              initial={{ opacity: 0, rotateX: -15, y: 20 }}
+              animate={{ opacity: 1, rotateX: 0, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ 
+                scale: 1.06, 
+                borderColor: "rgba(255, 255, 255, 0.28)",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+                boxShadow: "0px 20px 40px rgba(0,0,0,0.45)"
+              }}
+              whileTap={{ scale: 0.98 }}
+              className="cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3 text-left text-sm text-zinc-400 transition-colors duration-300 hover:text-zinc-100"
             >
-              {prompt}
-            </button>
+              <div className="line-clamp-3">
+                {prompt}
+              </div>
+            </motion.button>
           ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -431,7 +456,7 @@ export default function RagChatApp() {
   };
 
   const sidebar = (
-    <aside className="flex h-full w-72 flex-col rounded-2xl border border-white/10 bg-[rgba(18,20,27,0.78)] shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+    <aside className="flex h-full w-72 flex-col rounded-2xl border border-white/[0.08] bg-[rgba(18,20,27,0.48)] shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl transition-all duration-500 hover:bg-[rgba(18,20,27,0.54)] hover:border-white/15">
       <div className="border-b border-white/8 px-4 py-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -493,7 +518,7 @@ export default function RagChatApp() {
             Upload your first PDF to begin.
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" style={{ perspective: 600 }}>
             <AnimatePresence initial={false}>
               {documents.map((doc) => {
                 const isActive = doc === activeDocument;
@@ -506,13 +531,15 @@ export default function RagChatApp() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className={`group rounded-xl border transition ${
+                    whileHover={{ scale: 1.03, rotateY: 8, z: 8 }}
+                    className={`group rounded-xl border transition-all duration-300 ${
                       isActive
-                        ? "border-white/15 bg-white/[0.07]"
+                        ? "border-white/15 bg-white/[0.08] shadow-[0_8px_20px_rgba(0,0,0,0.2)]"
                         : "border-transparent bg-transparent hover:border-white/8 hover:bg-white/[0.04]"
                     }`}
+                    style={{ transformStyle: "preserve-3d" }}
                   >
-                    <div className="flex items-center gap-2 px-2 py-2">
+                    <div className="flex items-center gap-2 px-2 py-2" style={{ transform: "translateZ(8px)" }}>
                       <button
                         type="button"
                         onClick={() => selectDocument(doc)}
@@ -550,9 +577,17 @@ export default function RagChatApp() {
   );
 
   return (
-    <main className="min-h-screen bg-[var(--app-bg)] text-white">
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(120,140,170,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(90,110,130,0.08),transparent_22%)]">
-        <div className="mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 sm:px-4 sm:py-4">
+    <main className="min-h-screen bg-[var(--app-bg)] text-white relative overflow-hidden">
+      {/* Dynamic 3D Neon Ambient Blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(6,182,212,0.12),transparent_70%)] rounded-full blur-[130px] pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(168,85,247,0.12),transparent_70%)] rounded-full blur-[140px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute top-[40%] right-[10%] w-[450px] h-[450px] bg-[radial-gradient(circle,rgba(236,72,153,0.08),transparent_70%)] rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '12s' }} />
+
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(120,140,170,0.06),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(90,110,130,0.06),transparent_30%)] relative z-10">
+        <div 
+          className="mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 sm:px-4 sm:py-4"
+          style={{ perspective: 1200 }}
+        >
           <div className={`hidden lg:block ${sidebarOpen ? "w-72 shrink-0" : "w-0 overflow-hidden"}`}>{sidebar}</div>
 
           <AnimatePresence>
@@ -561,14 +596,14 @@ export default function RagChatApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md lg:hidden"
                 onClick={() => setMobileSidebarOpen(false)}
               >
                 <motion.div
-                  initial={{ x: -20 }}
-                  animate={{ x: 0 }}
-                  exit={{ x: -20 }}
-                  transition={{ duration: 0.2 }}
+                  initial={{ x: -20, rotateY: 10 }}
+                  animate={{ x: 0, rotateY: 0 }}
+                  exit={{ x: -20, rotateY: 10 }}
+                  transition={{ duration: 0.25 }}
                   className="p-3"
                   onClick={(event) => event.stopPropagation()}
                 >
@@ -578,7 +613,10 @@ export default function RagChatApp() {
             )}
           </AnimatePresence>
 
-          <section className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-white/10 bg-[rgba(16,18,24,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+          <section 
+            className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-white/[0.08] bg-[rgba(8,10,15,0.42)] shadow-[0_30px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl transition-all duration-500 hover:border-white/15"
+            style={{ transformStyle: "preserve-3d" }}
+          >
             <header className="flex items-center gap-3 border-b border-white/8 px-4 py-3">
               <button
                 type="button"
@@ -657,7 +695,7 @@ export default function RagChatApp() {
               )}
             </AnimatePresence>
 
-            <div className="flex-1 overflow-y-auto pb-32">
+            <div className="flex-1 overflow-y-auto pb-32" style={{ perspective: 1000 }}>
               {chatHistory.length === 0 && !isLoading ? (
                 <EmptyState activeDocument={activeDocument} onPromptSelect={handlePromptSelect} />
               ) : (
@@ -666,18 +704,19 @@ export default function RagChatApp() {
                     {chatHistory.map((message) => (
                       <motion.div
                         key={message.id}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{ opacity: 0, scale: 0.95, rotateX: 12, rotateY: message.role === "user" ? 8 : -8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0, y: 0 }}
+                        transition={{ type: "spring", stiffness: 100, damping: 13 }}
                         className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        style={{ transformStyle: "preserve-3d" }}
                       >
                         <div className={`max-w-[85%] ${message.role === "user" ? "items-end" : "items-start"}`}>
                           {message.role === "user" ? (
-                            <div className="rounded-2xl rounded-br-md border border-white/10 bg-white/[0.08] px-4 py-2.5 text-sm leading-6 text-white">
+                            <div className="rounded-2xl rounded-br-md border border-white/[0.08] bg-white/[0.07] px-4 py-2.5 text-sm leading-6 text-white backdrop-blur-sm shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:bg-white/[0.09] transition-all duration-300">
                               {message.content}
                             </div>
                           ) : (
-                            <div className="rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                            <div className="rounded-2xl rounded-bl-md border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-sm leading-6 text-white/80 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_12px_24px_rgba(0,0,0,0.25)] hover:bg-white/[0.035] transition-all duration-300">
                               <div className="markdown-body text-sm leading-6">
                                 <ReactMarkdown
                                   components={{
@@ -724,7 +763,7 @@ export default function RagChatApp() {
             </div>
 
             <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
-              <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-[rgba(20,22,30,0.88)] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+              <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/[0.08] bg-[rgba(20,22,30,0.65)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
                 {!activeDocument && (
                   <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-300/12 bg-amber-400/8 px-3 py-2 text-sm text-amber-100/85">
                     <AlertCircle size={14} className="shrink-0" />
@@ -733,8 +772,8 @@ export default function RagChatApp() {
                 )}
 
                 <div className="flex items-end gap-2.5">
-                <div className="flex-1 rounded-xl border border-white/10 bg-black/15 px-3 py-2.5 transition focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10">
-                  <textarea
+                  <div className="flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 transition focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10">
+                    <textarea
                       ref={textareaRef}
                       rows={1}
                       value={inputValue}
@@ -752,8 +791,8 @@ export default function RagChatApp() {
 
                   <motion.button
                     type="button"
-                    whileHover={inputValue.trim() && activeDocument && !isLoading ? { scale: 1.02 } : undefined}
-                    whileTap={inputValue.trim() && activeDocument && !isLoading ? { scale: 0.98 } : undefined}
+                    whileHover={inputValue.trim() && activeDocument && !isLoading ? { scale: 1.05, rotateZ: 5 } : undefined}
+                    whileTap={inputValue.trim() && activeDocument && !isLoading ? { scale: 0.95 } : undefined}
                     onClick={() => void handleSend()}
                     disabled={!inputValue.trim() || !activeDocument || isLoading}
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition ${

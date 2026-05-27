@@ -30,6 +30,7 @@ env/
 # Project Specific
 uploads/
 vectorstore/
+backend/config.py
 frontend_opencode
 # IDEs
 .vscode/

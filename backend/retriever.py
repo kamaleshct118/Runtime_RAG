@@ -3,7 +3,7 @@ import re
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
-import config
+import env
 
 # Global variables to "cache" the models in RAM
 # This makes subsequent questions INSTANT
@@ -15,21 +15,24 @@ _active_id = None
 def get_embeddings():
     global _embeddings_cache
     if _embeddings_cache is None:
-        print(f"[*] Loading Embedding Model ({config.EMBED_MODEL})...")
+        print(f"[*] Loading Embedding Model ({env.EMBED_MODEL})...")
         _embeddings_cache = HuggingFaceEmbeddings(
-            model_name=config.EMBED_MODEL,
-            model_kwargs={'trust_remote_code': True}
+            model_name=env.EMBED_MODEL,
+            model_kwargs={
+                'trust_remote_code': True,
+                'local_files_only': True
+            }
         )
     return _embeddings_cache
 
 def get_llm():
     global _llm_cache
     if _llm_cache is None:
-        # We strip() to handle accidental spaces in config.py
+        # We strip() to handle accidental spaces in env.py / .env
         _llm_cache = ChatOpenAI(
-            model=config.MODEL_NAME.strip(),
-            api_key=config.GROQ_API_KEY,
-            base_url=config.GROQ_BASE_URL,
+            model=env.MODEL_NAME.strip(),
+            api_key=env.GROQ_API_KEY,
+            base_url=env.GROQ_BASE_URL,
         )
     return _llm_cache
 
@@ -40,7 +43,7 @@ def load_db(doc_id):
     if _active_id == doc_id and _active_db is not None:
         return _active_db # Already loaded!
     
-    db_path = os.path.join(config.VECTOR_DIR, doc_id)
+    db_path = os.path.join(env.VECTOR_DIR, doc_id)
     if not os.path.exists(db_path):
         return None
         
@@ -89,40 +92,69 @@ def generate_queries(original_query):
     return list(set(clean_queries[:4]))
 
 def ask_question(question, doc_id):
-    db = load_db(doc_id)
-    if db is None:
-        return "Error: Document index not found.", []
-
-    # 1. Multi-Query Search
-    search_queries = generate_queries(question)
+    import supabase_client
     
-    unique_docs = {}
-    is_summary_query = any(word in question.lower() for word in ["abstract", "summary", "summarise", "intro"])
+    docs = []
     
-    for q in search_queries:
-        # Get more candidates
-        results = db.similarity_search(q, k=5) 
-        for d in results:
-            unique_docs[d.page_content] = d
+    if supabase_client.is_supabase_enabled():
+        print(f"[*] Querying Supabase pgvector similarity for '{doc_id}'...")
+        # 1. Multi-Query Search
+        search_queries = generate_queries(question)
+        
+        unique_docs = {}
+        is_summary_query = any(word in question.lower() for word in ["abstract", "summary", "summarise", "intro"])
+        
+        embeddings_model = get_embeddings()
+        
+        for q in search_queries:
+            # Generate query embedding vector
+            q_vector = embeddings_model.embed_query(q)
+            results = supabase_client.search_supabase_chunks(doc_id, q_vector, k=5)
+            for d in results:
+                unique_docs[d.page_content] = d
+                
+        all_docs = list(unique_docs.values())
+        
+        if is_summary_query:
+            all_docs.sort(key=lambda x: x.metadata.get('page', 999))
             
-            # --- NEW: THE NEIGHBORHOOD RULE ---
-            # If we hit a page in the front of the book (0-8), 
-            # we should also search for the pages immediately surrounding it.
-            pg = d.metadata.get('page', 999)
-            if is_summary_query and pg < 10:
-                print(f"[*] Found potential front-matter on Page {pg+1}. Expanding neighborhood search...")
-                # Broaden search for that specific page area
-                adj_results = db.similarity_search(f"Page {pg+1} {pg+2} {pg} content", k=3)
-                for adj in adj_results:
-                    unique_docs[adj.page_content] = adj
+        docs = all_docs[:8]
+    else:
+        db = load_db(doc_id)
+        if db is None:
+            return "Error: Document index not found.", []
 
-    all_docs = list(unique_docs.values())
-    
-    if is_summary_query:
-        all_docs.sort(key=lambda x: x.metadata.get('page', 999))
+        # 1. Multi-Query Search
+        search_queries = generate_queries(question)
+        
+        unique_docs = {}
+        is_summary_query = any(word in question.lower() for word in ["abstract", "summary", "summarise", "intro"])
+        
+        for q in search_queries:
+            # Get more candidates
+            results = db.similarity_search(q, k=5) 
+            for d in results:
+                unique_docs[d.page_content] = d
+                
+                # --- NEW: THE NEIGHBORHOOD RULE ---
+                # If we hit a page in the front of the book (0-8), 
+                # we should also search for the pages immediately surrounding it.
+                pg = d.metadata.get('page', 999)
+                if is_summary_query and pg < 10:
+                    print(f"[*] Found potential front-matter on Page {pg+1}. Expanding neighborhood search...")
+                    # Broaden search for that specific page area
+                    adj_results = db.similarity_search(f"Page {pg+1} {pg+2} {pg} content", k=3)
+                    for adj in adj_results:
+                        unique_docs[adj.page_content] = adj
 
-    # Take a larger context for Summaries (8 chunks)
-    docs = all_docs[:8] 
+        all_docs = list(unique_docs.values())
+        
+        if is_summary_query:
+            all_docs.sort(key=lambda x: x.metadata.get('page', 999))
+
+        # Take a larger context for Summaries (8 chunks)
+        docs = all_docs[:8] 
+
     context = "\n---\n".join([f"[CONTENT]: {d.page_content}" for d in docs])
     
     llm = get_llm()
@@ -150,6 +182,10 @@ def ask_question(question, doc_id):
     return response_text, docs
 
 def list_indexes():
-    if not os.path.exists(config.VECTOR_DIR):
+    import supabase_client
+    if supabase_client.is_supabase_enabled():
+        return supabase_client.list_supabase_documents()
+        
+    if not os.path.exists(env.VECTOR_DIR):
         return []
-    return [d for d in os.listdir(config.VECTOR_DIR) if os.path.isdir(os.path.join(config.VECTOR_DIR, d))]
+    return [d for d in os.listdir(env.VECTOR_DIR) if os.path.isdir(os.path.join(env.VECTOR_DIR, d))]
