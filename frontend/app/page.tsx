@@ -245,6 +245,7 @@ export default function RagChatApp() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -258,7 +259,12 @@ export default function RagChatApp() {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [chatHistory, isLoading]);
 
   useEffect(() => {
@@ -695,7 +701,11 @@ export default function RagChatApp() {
               )}
             </AnimatePresence>
 
-            <div className="flex-1 overflow-y-auto pb-32" style={{ perspective: 1000 }}>
+            <div 
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto pb-32" 
+              style={{ perspective: 1000 }}
+            >
               {chatHistory.length === 0 && !isLoading ? (
                 <EmptyState activeDocument={activeDocument} onPromptSelect={handlePromptSelect} />
               ) : (
