@@ -577,18 +577,18 @@ export default function RagChatApp() {
   );
 
   return (
-    <main className="min-h-screen bg-[var(--app-bg)] text-white relative overflow-hidden">
+    <main className="h-screen w-screen bg-[var(--app-bg)] text-white relative overflow-hidden flex flex-col">
       {/* Dynamic 3D Neon Ambient Blobs */}
       <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(6,182,212,0.12),transparent_70%)] rounded-full blur-[130px] pointer-events-none animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-[radial-gradient(circle,rgba(168,85,247,0.12),transparent_70%)] rounded-full blur-[140px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
       <div className="absolute top-[40%] right-[10%] w-[450px] h-[450px] bg-[radial-gradient(circle,rgba(236,72,153,0.08),transparent_70%)] rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '12s' }} />
 
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(120,140,170,0.06),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(90,110,130,0.06),transparent_30%)] relative z-10">
+      <div className="h-full w-full bg-[radial-gradient(circle_at_top_left,rgba(120,140,170,0.06),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(90,110,130,0.06),transparent_30%)] relative z-10 flex flex-col overflow-hidden">
         <div 
-          className="mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 sm:px-4 sm:py-4"
+          className="mx-auto flex h-full w-full max-w-[1600px] gap-4 p-3 sm:p-4 overflow-hidden"
           style={{ perspective: 1200 }}
         >
-          <div className={`hidden lg:block ${sidebarOpen ? "w-72 shrink-0" : "w-0 overflow-hidden"}`}>{sidebar}</div>
+          <div className={`hidden lg:block h-full ${sidebarOpen ? "w-72 shrink-0" : "w-0 overflow-hidden"}`}>{sidebar}</div>
 
           <AnimatePresence>
             {mobileSidebarOpen && (
@@ -604,7 +604,7 @@ export default function RagChatApp() {
                   animate={{ x: 0, rotateY: 0 }}
                   exit={{ x: -20, rotateY: 10 }}
                   transition={{ duration: 0.25 }}
-                  className="p-3"
+                  className="p-3 h-full"
                   onClick={(event) => event.stopPropagation()}
                 >
                   {sidebar}
@@ -614,7 +614,7 @@ export default function RagChatApp() {
           </AnimatePresence>
 
           <section 
-            className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-white/[0.08] bg-[rgba(8,10,15,0.42)] shadow-[0_30px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl transition-all duration-500 hover:border-white/15"
+            className="relative flex min-w-0 flex-1 flex-col h-full max-h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-[rgba(8,10,15,0.42)] shadow-[0_30px_70px_rgba(0,0,0,0.45)] backdrop-blur-2xl transition-all duration-500 hover:border-white/15"
             style={{ transformStyle: "preserve-3d" }}
           >
             <header className="flex items-center gap-3 border-b border-white/8 px-4 py-3">
